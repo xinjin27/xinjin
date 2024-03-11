@@ -10,6 +10,7 @@ let renderer, scene, camera;
 
 // Otras globales
 let cameraControls, effectController;
+let trofeo;
 let tablero, fichas = [];
 const piezasAjedrez = [
     "peonNegro1",
@@ -46,6 +47,7 @@ const piezasAjedrez = [
     "reyBlanco"
 ];
 const casillaSize = 1;
+var piezaSeleccionada = null;
 
 
 console.log(piezasAjedrez);
@@ -79,6 +81,8 @@ function init() {
 
 // Carga de la escena
 function loadScene() {
+
+
     var light = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
     scene.add(light);
     // Material para el tablero
@@ -108,11 +112,14 @@ function loadScene() {
         const scale = 0.6; // Ajustamos la escala para que quepa en una casilla
         trofeo.scale.set(scale, scale, scale);
         trofeo.position.set(-15, 0, 1);
+        trofeo.name='trofeo';
         //trofeo.rotation.y = Math.PI / 2; // Ajusta la rotación según sea necesario
         scene.add(trofeo);
+    }
+    );
 
-
-    });
+    aux = new THREE.Object3D();
+    aux.add(trofeo);
 
     loader.load('models/peon.glb', function (gltf) {
         const peonNegro = gltf.scene;
@@ -466,18 +473,27 @@ fichas.forEach(pieza => {
 function setupGUI() {
     // Definicion de los controles
     effectController = {
-        mensaje: 'Tablero de Ajedrez 3D'
+        mensaje: 'Tablero de Ajedrez 3D',
+        giroY: 0.0
     };
 
     // Creacion interfaz
     const gui = new GUI();
 
-    // Construccion del menu
-    gui.add(effectController, "mensaje").name("Aplicacion");
+	// Construccion del menu
+	const h = gui.addFolder("Control trofeo");
+    h.add(effectController, "mensaje").name("Aplicacion");
+	h.add(effectController, "giroY", -180.0, 180.0, 0.025).name("Giro en Y");
+	
+     
 }
 
+
 function update() {
-    // No se necesitan actualizaciones en este ejemplo
+    
+        trofeo.rotation.y = effectController.giroY * Math.PI / 180; // Rotar el trofeo según el control deslizante
+    
+    TWEEN.update();
 }
 
 function render() {
@@ -485,6 +501,8 @@ function render() {
     update();
     renderer.render(scene, camera);
 }
+
+
 
 
 /////////////////////////////////////
@@ -498,6 +516,7 @@ function onMouseClick(event) {
     const mouse = new THREE.Vector2();
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    console.log(mouse.x, mouse.y);
 
     // Crear un rayo desde la cámara
     const raycaster = new THREE.Raycaster();
@@ -507,6 +526,14 @@ function onMouseClick(event) {
     const intersects = raycaster.intersectObjects(scene.children, true); // 'scene' es tu escena
 
     // Si hay intersecciones, se ha hecho clic sobre algún objeto
+    if (piezaSeleccionada != null) {
+        const positionMove= piezaSeleccionada.position.clone();
+        positionMove.x += ((event.clientX / window.innerWidth) * 2 - 1)*90;
+        //positionMove.y += (-(event.clientY / window.innerHeight) * 2 + 1)*50;
+        piezaSeleccionada.position.copy(positionMove);
+        piezaSeleccionada = null;
+        render();
+    }
     if (intersects.length > 0) {
         // La primera intersección representa el objeto más cercano al clic del mouse
         const objetoIntersectado = intersects[0].object;
@@ -537,13 +564,13 @@ function onMouseClick(event) {
                     // Verificar si la casilla destino está vacía
                     const isCasillaVacia = fichas.every(ficha => {
                         const distancia = ficha.position.distanceTo(newPosition);
-                        return distancia > 49; // Ajusta este valor según la precisión que necesites
+                        //return distancia > 49; // Ajusta este valor según la precisión que necesites
+                        return true;
                     });
 
                     if (isCasillaVacia) {
                         // Mover la ficha a la nueva posición
-                        objetoIntersectado.position.set(newPosition);
-                        render();
+                        piezaSeleccionada = objetoIntersectado;
                     } else {
                         console.log("Movimiento no válido: casilla ocupada");
                     }
